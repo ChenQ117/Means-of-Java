@@ -1,4 +1,4 @@
-# Spring 
+# Spring—IoC、DI、Bean、容器
 
 ## IoC控制反转
 
@@ -398,4 +398,234 @@ public class BookServiceImpl implements BookService, InitializingBean, Disposabl
 - 使用按类型装配时(byType)必须保障容器中<font color='red'>相同类型的bean唯一</font>，推荐使用
 - 使用按名称装配时(byName)必须保障容器中<font color='red'>具有指定名称的bean</font>，因变量名与配置耦合，不推荐使用
 - 自动装配优先级低于setter注入与构造器注入，同时出现时自动装配配置失败
+
+### 集合注入
+
+提供setter方法
+
+```java
+public class OrderDaoImpl implements OrderDao {
+    private List list;
+    private Set set;
+    private Map map;
+    private int[] array;
+    private Properties properties;
+
+    public void setProperties(Properties properties) {
+        this.properties = properties;
+    }
+
+    public void setList(List list) {
+        this.list = list;
+    }
+
+    public void setSet(Set set) {
+        this.set = set;
+    }
+
+    public void setMap(Map map) {
+        this.map = map;
+    }
+
+    public void setArray(int[] array) {
+        this.array = array;
+    }
+
+    public void save(){
+        System.out.println(Arrays.toString(array));
+        System.out.println("list"+list);
+        System.out.println("set"+set);
+        System.out.println("map"+map);
+        System.out.println("properties"+properties);
+        System.out.println("order dao save");
+    }
+}
+```
+
+在bean中配置`property`
+
+```xml
+    <bean id="orderDao" class="com.cq.dao.impl.OrderDaoImpl">
+        <property name="array">
+            <array>
+                <value>10</value>
+                <value>20</value>
+                <value>30</value>
+            </array>
+        </property>
+        <property name="list">
+            <list>
+                <value>it</value>
+                <value>is</value>
+                <value>best</value>
+            </list>
+        </property>
+        <property name="map">
+            <map>
+                <entry key="conutry" value="china"/>
+                <entry key="province" value="jianxi"/>
+                <entry key="city" value="yingtan"/>
+            </map>
+        </property>
+        <property name="set">
+            <set>
+                <value>its</value>
+                <value>is</value>
+                <value>its</value>
+            </set>
+        </property>
+        <property name="properties">
+            <props>
+                <prop key="country">china</prop>
+                <prop key="province">jianxi</prop>
+                <prop key="city">beijing</prop>
+            </props>
+        </property>
+    </bean>
+```
+
+## 案例 数据源对象管理
+
+### 直接配置
+
+- 导入druid坐标，pom.xml文件
+
+  ```xml
+          <dependency>
+              <groupId>com.alibaba</groupId>
+              <artifactId>druid</artifactId>
+              <version>1.1.16</version>
+          </dependency>
+  ```
+
+- 配置数据源对象作为spring管理的bean
+
+  ```xml
+  <!--    管理DruidDataSource对象-->
+      <bean  class="com.alibaba.druid.pool.DruidDataSource">
+          <property name="driverClassName" value="com.mysql.jdbc.Driver"/>
+          <property name="url" value="jdbc:mysql://localhost:3306/myfriend"/>
+          <property name="username" value="root"/>
+          <property name="password" value="root"/>
+      </bean>
+  ```
+
+### 加载properties文件
+
+- 开启context命名空间
+
+  ```xml
+  <?xml version="1.0" encoding="UTF-8"?>
+  <beans xmlns="http://www.springframework.org/schema/beans"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xmlns:context="http://www.springframework.org/schema/context"
+         xsi:schemaLocation="
+              http://www.springframework.org/schema/beans
+              http://www.springframework.org/schema/beans/spring-beans.xsd
+              http://www.springframework.org/schema/context
+              http://www.springframework.org/schema/context/spring-context.xsd
+              ">
+  </bean>
+  ```
+
+- 使用context命名空间，加载指定properties文件，`system-properties-mode="NEVER"`防止与系统属性相同的变量对其产生影响
+
+  ```xml
+  <context:property-placeholder location="jdbc.properties" system-properties-mode="NEVER"/>
+  ```
+
+  加载多个配置文件
+
+  ```xml
+  <context:property-placeholder location="classpath*:*.properties" system-properties-mode="NEVER"/>
+  ```
+
+- 使用`${}`读取加载的属性
+
+  ```xml
+      <bean id="dataSource" class="com.alibaba.druid.pool.DruidDataSource">
+          <property name="driverClassName" value="${jdbc.driver}"/>
+          <property name="url" value="${jdbc.url}"/>
+          <property name="username" value="${jdbc.username}"/>
+          <property name="password" value="${jdbc.password}"/>
+      </bean>
+  ```
+
+## 容器
+
+### 创建容器
+
+- 类路径加载配置文件
+
+  ```java
+  ApplicationContext ctx = new ClassPathXmlApplicationContext("applicationContext.xml");
+  ```
+
+- 绝对路径加载配置文件
+
+  ```java
+  ApplicationContext ctx = new FileSystemXmlApplicationContext("E:\\IdeaProjects\\springDemo\\src\\main\\resources\\jdbc.properties");
+  ```
+
+- 加载多个配置文件
+
+  ```java
+  ApplicationContext ctx = new ClassPathXmlApplicationContext("bean1.xml","bean2.xml");
+  ```
+
+### 获取bean
+
+- 使用bean名称获取
+
+  ```java
+  BookDao bookDao = (BookDao)ctx.getBean("bookDao");
+  ```
+
+- 使用bean名称获取并指定类型
+
+  ```java
+  BookDao bookDao = ctx.getBean("bookDao",BookDao.class);
+  ```
+
+- 使用bean类型获取，此时容器中只能有一个该类型的bean
+
+  ```java
+  BookDao bookDao = ctx.getBean(BookDao.class);
+  ```
+
+### 容器层次实现类
+
+![image-20220822172500485](Spring—IoC、DI、Bean.assets/image-20220822172500485.png)
+
+### BeanFactory初始化
+
+- 类路径加载配置文件
+
+  ```java
+  Resource resources = new ClassPathResource("applicationContext.xml");
+  BeanFactory bf = new XmlBeanFactory(resources);
+  BookDao bookDao = bf.getBean("bookDao",BookDao.class);
+  ```
+
+- BeanFactory创建完毕后，所有的bean均为延迟加载
+
+## 总结
+
+### 容器相关
+
+- BeanFactory是IoC容器的顶层接口，初始化BeanFactory对象时，<font color='red'>加载的bean延迟加载</font>。
+- ApplicationContext接口时Spring容器的核心接口，<font color='red'>初始化时bean立即加载</font>。
+- ApplicationContext接口常用初始化类
+  - ClassPathXmlApplicationContext
+  - FileSystemXmlApplicationContext
+
+### bean相关
+
+![image-20220822173816658](Spring—IoC、DI、Bean.assets/image-20220822173816658.png)
+
+### 依赖注入相关
+
+![image-20220822173859286](Spring—IoC、DI、Bean.assets/image-20220822173859286.png)
+
+
 
