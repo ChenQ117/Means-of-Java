@@ -1,4 +1,4 @@
-# Spring—注解、AOP、事务
+# Spring—注解
 
 ## 注解开发
 
@@ -293,4 +293,69 @@ public class JdbcConfig {
 ![image-20220823104014895](Spring—注解、AOP、事务.assets/image-20220823104014895.png)
 
 ## Spring整合MyBatis
+
+### 配置类
+
+```java
+public class MybatisConfig {
+    @Bean
+    public SqlSessionFactoryBean sqlSessionFactory(DataSource dataSource){
+        SqlSessionFactoryBean sqlSessionFactoryBean = new SqlSessionFactoryBean();
+        sqlSessionFactoryBean.setTypeAliasesPackage("com.cq.pojo");
+        sqlSessionFactoryBean.setDataSource(dataSource);
+        return sqlSessionFactoryBean;
+    }
+    @Bean
+    public MapperScannerConfigurer mapperScannerConfigurer(){
+        MapperScannerConfigurer mapperScannerConfigurer = new MapperScannerConfigurer();
+        mapperScannerConfigurer.setBasePackage("com.cq.mapper");
+        return mapperScannerConfigurer;
+    }
+
+}
+```
+
+### 调用
+
+```java
+public static void main(String[] args) {
+	ApplicationContext ctx = new AnnotationConfigApplicationContext(SpringConfig.class);
+    MyFriendService myFriendService = (MyFriendService) ctx.getBean("myFriendService");
+    List<MyFriend> myFriends = myFriendService.selectAll();
+    System.out.println(myFriends);
+}
+```
+
+## Spring整合Junit
+
+### 导入依赖
+
+```xml
+		<dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.12</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-test</artifactId>
+            <version>5.2.10.RELEASE</version>
+        </dependency>
+```
+
+### 测试
+
+```java
+@RunWith(SpringJUnit4ClassRunner.class)
+@ContextConfiguration(classes = SpringConfig.class)
+public class BookServiceTest {
+    @Autowired
+    private MyFriendService myFriendService;
+    @Test
+    public void testSelectAll(){
+        System.out.println(myFriendService.selectAll());
+    }
+}
+```
 
