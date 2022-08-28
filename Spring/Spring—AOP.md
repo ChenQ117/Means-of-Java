@@ -146,6 +146,9 @@ execution(public User com.cq.service.UserService.findById(int))
     @Around("pt()")
     public Object around(ProceedingJoinPoint pjo) throws Throwable {
         System.out.println("before");
+        Signature signature = pjo.getSignature();
+        System.out.println(signature.getDeclaringTypeName());//获取调用方法的接口名
+        System.out.println(signature.getName());//获取方法名
         //表示对原始操作的执行
         Object ob = pjo.proceed();
         System.out.println("after");
@@ -174,4 +177,83 @@ execution(public User com.cq.service.UserService.findById(int))
         System.out.println(System.currentTimeMillis());
     }
 ```
+
+## AOP通知获取数据
+
+### 获取参数
+
+- 前置通知获取参数（后置通知一样）
+
+  ```java
+  @Before("pt()")
+      public void method(JoinPoint jp){
+          Object[] args = jp.getArgs();
+          System.out.println(Arrays.toString(args));
+          System.out.println(System.currentTimeMillis());
+      }
+  ```
+
+- 环绕通知获取参数
+
+  ```java
+  @Around("pt()")
+      public Object around(ProceedingJoinPoint pjo) throws Throwable {
+          System.out.println("before");
+          Signature signature = pjo.getSignature();
+          System.out.println(signature.getDeclaringTypeName());//获取调用方法的接口名
+          System.out.println(signature.getName());//获取方法名
+          Object[] args = pjo.getArgs();//获取原始操作的参数
+          //表示对原始操作的执行
+          Object ob = pjo.proceed(args);
+          System.out.println("after");
+          return ob;
+      }
+  ```
+
+### 获取返回值
+
+```java
+@AfterReturning(value = "pt()",returning = "ret")
+    public void afterReturning(JoinPoint jp,Object ret){
+        System.out.println(ret);
+    }
+```
+
+<font color='red'>如果需要传入`JoinPoint`，那么`JoinPoint`必须是第一个参数</font>
+
+### 获取异常
+
+- 环绕通知
+
+  ```java
+     @Around("pt()")
+      public Object around(ProceedingJoinPoint pjo) throws Throwable {
+          System.out.println("before");
+          Signature signature = pjo.getSignature();
+          System.out.println(signature.getDeclaringTypeName());//获取调用方法的接口名
+          System.out.println(signature.getName());//获取方法名
+          Object[] args = pjo.getArgs();//获取原始操作的参数
+          //表示对原始操作的执行
+          Object ob = null;
+          try {
+  
+              ob = pjo.proceed(args);
+              System.out.println("after");
+          }catch (Throwable t){
+              t.printStackTrace();
+          }
+          return ob;
+      }
+  ```
+
+- AfterThrowing
+
+  ```java
+  @AfterThrowing(value = "pt()",throwing = "t")
+      public void afterThrowing(JoinPoint jp,Throwable t){
+          System.out.println(t);
+      }
+  ```
+
+  
 
