@@ -103,3 +103,104 @@
   - `createServletApplicationContext()`，创建Servlet容器时，加载SpringMVC对应的bean并放入`WebApplicationContext`对象范围中，而`WebApplicationContext`的作用范围为`ServletContext`范围，即整个web容器范围
   - `getServletMappings()`，设置SpringMVC对应的请求映射路径，设置为`/`表示拦截所有请求，任意请求都将转入到SpringMVC进行处理
   - `createRootApplicationContext()`，如果创建Servlet容器时需要加载非SpringMVC对应的bean，使用当前方法进行，使用方式同`createServletApplicationContext()`
+
+## SpringMVC工作流程
+
+### 启动服务器初始化流程
+
+1. 服务器启动，执行ServletContainersInitConfig类，初始化web容器
+2. 执行`createServletApplicationContext()`方法，创建了`WebApplicationContext`对象
+3. 加载SpringMvcConfig
+4. 执行@ComponentScan加载对应的bean
+5. 加载UserController，每个@RequestMapping的名称对应一个具体的方法
+6. 执行getServletMappings方法，定义所有的请求都通过SpringMVC
+
+### 单次请求过程
+
+1. 发送请求localhost/save
+2. web容器发现所有请求都经过SpringMVC，将请求交给SpringMVC处理
+3. 解析请求路径/save
+4. 由/save匹配执行对应的方法save()
+5. 执行save()
+6. 检测到有@ResponseBody直接将save()方法的返回值作为响应体返回给请求方
+
+## Controller加载控制与业务bean加载控制
+
+### SpringMVC相关
+
+- 表现层bean
+- SpringMVC加载的bean对应的包均在com.cq.controller包内
+
+### Spring控制的bean
+
+- 业务bean service、功能bean DataSource等
+- 方式一：设定扫描范围为com.cq，排除掉controller包内的bean
+- 方式二：设定扫描范围为精准范围，例如service包、dao包等
+
+```java
+@Configuration
+//@ComponentScan({"com.cq.service","com.cq.dao"})
+@ComponentScan(value = "com.cq",
+        excludeFilters = @ComponentScan.Filter(
+                type = FilterType.ANNOTATION,
+                classes = Controller.class
+        )
+)
+public class SpringConfig {
+}
+```
+
+此时SpringMvcConfig需要去除`@Configuration`，否则`excludeFilters`无效
+
+- bean的加载模式
+
+  ```java
+  public class ServletContainerInitConfig extends AbstractDispatcherServletInitializer {
+  
+      //加载SpringMVC容器配置
+      @Override
+      protected WebApplicationContext createServletApplicationContext() {
+          AnnotationConfigWebApplicationContext ctx = new AnnotationConfigWebApplicationContext();
+          ctx.register(SpringMvcConfig.class);
+          return ctx;
+      }
+  
+      //设置哪些请求归属SpringMVC处理
+      @Override
+      protected String[] getServletMappings() {
+          return new String[]{"/"};
+      }
+  
+      //加载spring容器配置
+      @Override
+      protected WebApplicationContext createRootApplicationContext() {
+          AnnotationConfigWebApplicationContext ctx = new AnnotationConfigWebApplicationContext();
+          ctx.register(SpringConfig.class);
+          return ctx;
+      }
+  }
+  ```
+
+## 简化开发
+
+```java
+public class ServletContainerInitConfig extends AbstractAnnotationConfigDispatcherServletInitializer {
+    @Override
+    protected Class<?>[] getRootConfigClasses() {
+        return new Class[]{SpringConfig.class};
+    }
+
+    @Override
+    protected Class<?>[] getServletConfigClasses() {
+        return new Class[]{SpringMvcConfig.class};
+    }
+
+    @Override
+    protected String[] getServletMappings() {
+        return new String[]{"/"};
+    }
+}
+```
+
+
+
