@@ -171,7 +171,7 @@ public class SpringMvcConfig {
 }
 ```
 
-![image-20220830185133133](SpringMVC—请求与响应.assets/image-20220830185133133.png)
+### 集合参数![image-20220830185133133](SpringMVC—请求与响应.assets/image-20220830185133133.png)
 
 ```java
 @RequestMapping("/listParamForJson")
@@ -182,3 +182,142 @@ public class SpringMvcConfig {
     }
 ```
 
+### POJO参数
+
+![image-20220831081439513](SpringMVC—请求与响应.assets/image-20220831081439513.png)
+
+```java
+@RequestMapping("/listParamForJson")
+@ResponseBody
+public String listParamForJson(@RequestBody User user){
+    System.out.println(user.toString());
+    return "{'module':'list common for json param'}";
+}
+```
+
+### 集合里面存引用对象
+
+![image-20220831081825185](SpringMVC—请求与响应.assets/image-20220831081825185.png)
+
+```java
+@RequestMapping("/listParamForJson")
+@ResponseBody
+public String listParamForJson(@RequestBody List<User> user){
+    System.out.println(user.toString());
+    return "{'module':'list common for json param'}";
+}
+```
+
+### @RequestBody与@RequestParam的区别
+
+- @RequestParam用于接收url地址传参，表单传参【application/x-www-form-urlencoded】
+- @RequestBody用于接收json数据【application/json】
+
+## 日期类型参数传递
+
+![image-20220831082608150](SpringMVC—请求与响应.assets/image-20220831082608150.png)
+
+```java
+    @RequestMapping("/listParamForJson")
+    @ResponseBody
+    public String listParamForJson(Date date){
+        System.out.println(date);
+        return "{'module':'list common for json param'}";
+    }
+```
+
+- @DateTimeFormat设置格式
+
+![image-20220831083100360](SpringMVC—请求与响应.assets/image-20220831083100360.png)
+
+```java
+@RequestMapping("/listParamForJson")
+@ResponseBody
+public String listParamForJson(Date date, @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") Date date2){
+    System.out.println(date);
+    System.out.println(date2);
+    return "{'module':'list common for json param'}";
+}
+```
+
+## 类型转换器
+
+- Converter接口
+
+  ```java
+  public interface Converter<S,T>{
+      @Nullable
+      T convert(S val1);
+  }
+  ```
+
+  - 请求参数年龄数据（String-->Integer）
+  - 日期格式转换（String-->Date）
+  - @EnableWebMvc功能之一：根据类型匹配对应类型转换器
+
+## 响应页面、跳转页面
+
+```java
+//响应页面、跳转页面
+@RequestMapping("/toJumpPage")
+public String toJumpPage(){
+    System.out.println("跳转页面");
+    return "page.jsp";
+}
+```
+
+## 响应文本数据
+
+```java
+//响应文本数据
+@RequestMapping("/toText")
+@ResponseBody
+public String toText(){
+    System.out.println("返回文本数据");
+    return "response text";
+}
+```
+
+## 响应POJO对象
+
+```java
+    //响应POJO
+    @RequestMapping("/toJsonPojo")
+    @ResponseBody
+    public User toJsonPojo(){
+        System.out.println("返回json对象数据");
+        User user = new User();
+        user.setAge(18);
+        user.setName("chen");
+        return user;
+    }
+```
+
+结果：
+
+![image-20220831085230992](SpringMVC—请求与响应.assets/image-20220831085230992.png)
+
+## 响应POJO集合对象
+
+```java
+    @RequestMapping("/toJsonList")
+    @ResponseBody
+    public List<User> toJsonList(){
+        System.out.println("返回json集合数据");
+        User user1 = new User();
+        user1.setName("去");
+        user1.setAge(18);
+        User user2 = new User();
+        user2.setAge(20);
+        user2.setName("好");
+        List<User> list = new ArrayList<>();
+        list.add(user1);
+        list.add(user2);
+        return list;
+    }
+```
+
+## @ResponseBody
+
+- 设置当前控制器返回值作为响应体
+- 由HttpMessageConverter接口帮助转换
