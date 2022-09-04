@@ -7,7 +7,7 @@
 - ArrayList()无参构造函数会使用长度为0的数组
 - ArrayList(int initialCapacity)会使用指定容量的数组
 - public ArrayList(Collection<? extends E> c)会使用c的大小作为数组容量
-- add(Object o)首次扩容为10，再次扩容为上次容量c的1.5倍，即newc=c>>2+c
+- add(Object o)首次扩容为10，再次扩容为上次容量c的1.5倍，即newc=c>>1+c
 - addAll(Collection c)没有元素时，扩容为Math.max(10,c的size)，有元素时为Math.max(原容量1.5倍，实际元素个数)
 
 ## Fail-Fast
@@ -116,4 +116,103 @@
   - 32*h-h
   - 2^5 *h -h
   - h<<5-h
+
+## Hashtable vs ConcurrentHashMap
+
+- Hashtable和ConcurrentHashMap都是线程安全的Map集合，且key都不能为null
+- Hashtable并发度低，整个Hashtable对应一把锁，同一时刻，只能有一个线程操作它
+- 1.8之前ConcurrentHashMap使用Segment+数组+链表的结构，每个Segment对应一把锁，如果多个线程访问不同的Segment，则不会冲突
+- 1.8开始ConcurrentHashMap将数组的每个头结点作为锁，如果多个线程访问的头结点不同，则不会冲突
+
+## Hashtable
+
+### 扩容
+
+- 初始容量为11
+- 每次扩容为上一次的容量*2+1
+- 大于容量的0.75时触发扩容
+
+### 索引计算
+
+- 不需要二次哈希（因为容量基本上为质数），直接用（hashcode&07xFFFFFFF）%容量，保证结果为正数
+
+## 1.7 版本的ConcurrentHashMap
+
+- 饿汉式初始化
+- segment数组+HashEntry数组+链表
+- 头插法
+- 超过0.75才扩容
+- 每个Segment对应一把锁
+
+### 并发度
+
+- 构造函数传入容量、扩容因子、并发度clevel参数
+- 小数组的初始容量为容量/并发度，最小为2
+- segment不能扩容，用并发度指定的
+
+### 索引计算
+
+- Segment索引：取二次hash值的高n位二进制作为索引值（当并发度为16时，取高4位，当并发度为32时，取高5位）,n满足并发度=2^n。      代码公式：（二次hash值>>>segmentShift）&segmentMask
+- 小数组索引：取二次hash值的低n位，其中n满足小数组的容量=2^n
+
+### 扩容
+
+- Segment不能扩容
+- 当当前Segment下的数据超出当前小数组容量的0.75时触发扩容，扩为原来的两倍
+- 使用头插法，但因为每个Segment对应一把锁，所以不会造成扩容死链
+- 扩容是每个segment各扩各的，互不相干
+
+### Segment[0]原型
+
+- 初始化时segment[0]下会根据容量和并发度创建小数组，其他segment下没有小数组
+- 当其他segment需要创建小数组时，会参照segment[0]的小数组个数去创建
+- 当segment[0]下的小数组个数更改了，其他未创建小数组的segment也会根据更改后的segment[0]的小数组个数去创建
+
+## 1.8版本的ConcurrentHashMap
+
+- 懒汉式初始化，当put时才会创建数据结构
+- 数组+链表|红黑树
+- 尾插法
+- 达到0.75就扩容
+- 每个链表头对应一把锁
+
+### capacity和factor
+
+- capacity代表需要放入的容量，实际开辟的容量为一个比capacity除以0.75大的2的幂次方， 即实际容量c满足c=2^n && 0.75c>capacity，比如capacity=11时，c=16；capacity=12时，c=32
+- factor扩容因子：只在构造函数初始化时起作用，之后不管factor是多少，都是按照达到c的0.75就扩容
+
+### 并发put
+
+- 每个链表头对应一把锁
+- 当两个线程同时向一个表头插入数据时，会互斥，先抢到锁的先插入数据
+- 当两个线程同时向不同表头插入数组时，可以并发执行
+
+### 扩容
+
+- 数组迁移：从后向前迁移，先从15号数组开始往前处理，处理完的链表会添加一个forwardingNode，表示已经迁移了
+- 扩容时get：当迁移一半时，进行get操作，此时会根据索引判断是在旧的数组中查找还是在新的数组中查找，
+  - 对于只有一个结点或者没有结点的链表：当发现旧的数组中对应索引下的链表有forwardingNode则到新的数组中去查找。不会阻塞，可以并发运行
+  - 对于有多个结点的链表：当该结点的next会改变时，此时会复制原结点，将复制的结点添加到扩容后的数组中，get的是扩容前的数组中的结点；当该结点的next不会改变时，此时直接加到扩容后的数组中
+
+- 扩容时put：
+  - 当put的数据需要插入到处于当前正在迁移的链表的前半部分，则并发put，不需要加锁
+  - 当put的数据需要插入到正在迁移的链表，此时会阻塞，链表头被锁住
+  - 当put的数据需要插入到具有forwardingNode的链表中，不会等待，因为扩容线程一次性只能处理16个链表，会有多个扩容线程，所以新来的这个put线程会帮忙处理扩容
+
+## ThreadLocalMap
+
+- 初始容量：16
+- 扩容因子：2/3
+
+- 哈希冲突：
+
+  开放寻址法：如果冲突，找索引的下一个空闲的位置存放该数据
+
+- ThreadLocalMap中的key（即ThreadLocal）为什么要设计为弱引用
+
+  - Thread可能需要长期运行（如线程池中的线程），如果key不再使用，需要在内存不足（GC）时释放占用的内存
+  - 但GC仅是让key的内存释放，后续还要根据key是否为null来进一步释放值的内存
+    - 获取key，发现key为null时释放值
+    - set key时，会启用启发式扫描，清除临近的null key，启发次数与元素个数，是否发现null key有关
+    - remove时（推荐），因为一般使用ThreadLocal时都把它作为静态变量，因此无法GC，此时可以手动释放
 
