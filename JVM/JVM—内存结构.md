@@ -168,6 +168,8 @@
 
 - 可以使用intern方法，主动将串池中还没有的字符串对象放入串池
 
+- 小于Short的最大值的数与字节码存储在一起，大于Short的最大值的存储在常量池中（>32767）
+
   ```java
       //  ["ab", "a", "b"]
       public static void main(String[] args) {
