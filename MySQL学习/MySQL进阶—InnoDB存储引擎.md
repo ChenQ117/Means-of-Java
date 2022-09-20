@@ -78,8 +78,8 @@ typora-copy-images-to: ./
 
   简单的select（不加锁）就是快照读，<font color='red'>快照读是针对select的</font>，读取的是记录数据的可见版本，有可能是历史数据，不加锁，是非阻塞读。
 
-  - read committed：每次select，都生成一个快照读。
-  - repeatable read：开启事务后第一个select语句才是快照读的地方。
+  - read committed：每次select，都生成一个快照读。这样能实时知道当前活跃的事务id，知道哪些事务是在我这个事务还没提交时已经提交了的，就可以读取到最新的数据了。
+  - repeatable read：开启事务后第一个select语句才是快照读的地方。这样在我第一次select的时候readview中的当前活跃事务id就不会变了，即使有事务在我这个事务处理完前已经提交了我也不知道，我只能读到在我这个事务开始读之前提交的事务的修改数据。
   - serializable：快照读会退化为当前读。
 
 - MVCC：
